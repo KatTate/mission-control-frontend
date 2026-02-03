@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useTasks from '@/hooks/useTasks';
 import CreateTaskModal, { type CreateTaskFormData } from './CreateTaskModal';
+import EditTaskModal, { type EditTaskFormData } from './EditTaskModal';
 
 export interface Task {
   id: string;
@@ -51,6 +52,8 @@ export default function TaskList() {
   const { tasks, loading, error, refetch } = useTasks();
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'blocked' | 'done'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const handleCreateTask = async (formData: CreateTaskFormData) => {
     try {
@@ -70,6 +73,53 @@ export default function TaskList() {
       console.error('Error creating task:', error);
       throw error;
     }
+  };
+
+  const handleEditTask = async (taskId: string, updates: EditTaskFormData) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+
+      // Refetch tasks to update the list
+      await refetch();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
+
+      // Refetch tasks to update the list
+      await refetch();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task. Please try again.');
+    }
+  };
+
+  const openEditModal = (task: Task) => {
+    setSelectedTask(task);
+    setIsEditModalOpen(true);
   };
 
   const filteredTasks = filter === 'all' 
@@ -102,6 +152,16 @@ export default function TaskList() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTask}
+      />
+      
+      <EditTaskModal 
+        isOpen={isEditModalOpen}
+        task={selectedTask}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTask(null);
+        }}
+        onSubmit={handleEditTask}
       />
       
       <div className="bg-white border border-gray-200 rounded-lg">
@@ -166,7 +226,12 @@ export default function TaskList() {
           </div>
         ) : (
           filteredTasks.map(task => (
-            <TaskRow key={task.id} task={task} />
+            <TaskRow 
+              key={task.id} 
+              task={task} 
+              onEdit={openEditModal}
+              onDelete={handleDeleteTask}
+            />
           ))
         )}
       </div>
@@ -201,9 +266,11 @@ function FilterButton({ label, active, onClick, count }: FilterButtonProps) {
 // Task row component
 interface TaskRowProps {
   task: Task;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
 }
 
-function TaskRow({ task }: TaskRowProps) {
+function TaskRow({ task, onEdit, onDelete }: TaskRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -245,7 +312,7 @@ function TaskRow({ task }: TaskRowProps) {
 
       {/* Expanded view */}
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600 space-y-2">
+        <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600 space-y-3">
           <div className="flex space-x-6">
             <div>
               <span className="font-semibold">Created:</span>{' '}
@@ -276,6 +343,28 @@ function TaskRow({ task }: TaskRowProps) {
               ))}
             </div>
           )}
+          
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(task);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+            >
+              Edit
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       )}
     </div>
