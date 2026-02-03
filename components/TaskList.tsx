@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useTasks from '@/hooks/useTasks';
+import CreateTaskModal, { type CreateTaskFormData } from './CreateTaskModal';
 
 export interface Task {
   id: string;
@@ -47,8 +48,29 @@ const statusLabels = {
 };
 
 export default function TaskList() {
-  const { tasks, loading, error } = useTasks();
+  const { tasks, loading, error, refetch } = useTasks();
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'blocked' | 'done'>('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleCreateTask = async (formData: CreateTaskFormData) => {
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create task');
+      }
+
+      // Refetch tasks to update the list
+      await refetch();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
+  };
 
   const filteredTasks = filter === 'all' 
     ? tasks 
@@ -75,12 +97,29 @@ export default function TaskList() {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg">
-      {/* Header with filters */}
-      <div className="border-b border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Tasks</h2>
-          <div className="flex space-x-2">
+    <>
+      <CreateTaskModal 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateTask}
+      />
+      
+      <div className="bg-white border border-gray-200 rounded-lg">
+        {/* Header with filters */}
+        <div className="border-b border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Tasks</h2>
+            <div className="flex items-center space-x-4">
+              {/* Create Task Button */}
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+              >
+                + Create Task
+              </button>
+              
+              {/* Filter Buttons */}
+              <div className="flex space-x-2">
             <FilterButton 
               label="All" 
               active={filter === 'all'} 
@@ -111,9 +150,10 @@ export default function TaskList() {
               onClick={() => setFilter('done')}
               count={tasks.filter(t => t.status === 'done').length}
             />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Task list */}
       <div className="divide-y divide-gray-200">
@@ -130,7 +170,8 @@ export default function TaskList() {
           ))
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
