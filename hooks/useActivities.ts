@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, type DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export interface Activity {
   id: string;
@@ -8,7 +6,7 @@ export interface Activity {
   agentId: string;
   taskId?: string;
   message: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: string; // ISO string from API
   metadata?: any;
 }
 
@@ -18,36 +16,31 @@ export function useActivities(maxResults = 50) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    try {
-      const q = query(
-        collection(db, 'activities'),
-        orderBy('createdAt', 'desc'),
-        limit(maxResults)
-      );
-
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Activity[];
-          setActivities(data);
+    // Initial fetch
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('/api/activities');
+        const data = await response.json();
+        
+        if (response.ok) {
+          setActivities(data.activities);
           setLoading(false);
-        },
-        (err) => {
-          console.error('Error fetching activities:', err);
-          setError(err as Error);
-          setLoading(false);
+        } else {
+          throw new Error(data.error || 'Failed to fetch activities');
         }
-      );
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+        setError(err as Error);
+        setLoading(false);
+      }
+    };
 
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Error setting up activities listener:', err);
-      setError(err as Error);
-      setLoading(false);
-    }
+    fetchActivities();
+
+    // Poll for updates every 5 seconds (simulates real-time)
+    const interval = setInterval(fetchActivities, 5000);
+
+    return () => clearInterval(interval);
   }, [maxResults]);
 
   return { activities, loading, error };

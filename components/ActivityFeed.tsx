@@ -53,7 +53,7 @@ export default function ActivityFeed() {
                 <p className="mt-2 text-gray-700">{activity.message}</p>
               </div>
               <div className="text-xs text-gray-500 ml-4 whitespace-nowrap">
-                {activity.createdAt?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                {activity.createdAt ? new Date(activity.createdAt).toLocaleString() : 'Unknown time'}
               </div>
             </div>
           </div>
