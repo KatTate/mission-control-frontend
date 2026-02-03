@@ -1,25 +1,14 @@
 import { NextResponse } from 'next/server';
-import admin from 'firebase-admin';
-
-// Initialize Firebase Admin (singleton pattern)
-if (!admin.apps.length) {
-  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
-    '/home/ubuntu/.openclaw/credentials/googlechat-service-account.json';
-  
-  try {
-    const serviceAccount = require(serviceAccountPath);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: 'gen-lang-client-0308019863',
-    });
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
-  }
-}
-
-const db = admin.firestore();
+import { db, admin } from '@/lib/firebase-admin';
 
 export async function GET() {
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const tasksSnapshot = await db.collection('tasks')
       .orderBy('createdAt', 'desc')
@@ -47,6 +36,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     

@@ -1,21 +1,14 @@
 import { NextResponse } from 'next/server';
-import admin from 'firebase-admin';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-
-// Initialize Firebase Admin (singleton)
-if (!admin.apps.length) {
-  const serviceAccountPath = join(process.env.HOME || '', '.openclaw/credentials/googlechat-service-account.json');
-  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-  
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-}
-
-const db = admin.firestore();
+import { db } from '@/lib/firebase-admin';
 
 export async function GET() {
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const snapshot = await db.collection('activities')
       .orderBy('createdAt', 'desc')

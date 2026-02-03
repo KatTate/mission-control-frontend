@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import admin from 'firebase-admin';
-
-// Firebase Admin is already initialized in activities/route.ts
-const db = admin.firestore();
+import { db } from '@/lib/firebase-admin';
 
 export async function GET() {
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const snapshot = await db.collection('agents')
       .orderBy('id', 'asc')

@@ -22,9 +22,17 @@ A Next.js 16 frontend application with TypeScript and Tailwind CSS. Uses Firebas
 - `/scripts` - Build/utility scripts
 
 ## Configuration Required
-This project requires a Google Cloud/Firebase service account credentials file:
-- Path: `~/.openclaw/credentials/googlechat-service-account.json`
-- The API routes will return 500 errors until this file is configured
+This project requires a Firebase service account credential stored as a Replit Secret.
+
+### Setup Instructions
+1. Get the Firebase service account JSON file from the project owner (project: `gen-lang-client-0308019863`)
+2. In Replit, go to **Secrets** (lock icon in the left sidebar)
+3. Add a new secret:
+   - **Key:** `FIREBASE_SERVICE_ACCOUNT`
+   - **Value:** Paste the entire contents of the JSON file
+4. Restart the dev server
+
+The API routes will show "Firebase not configured" errors until this secret is set.
 
 ## Development
 - Dev server runs on port 5000 (host: 0.0.0.0)
