@@ -1,5 +1,6 @@
 import ActivityFeed from '@/components/ActivityFeed';
 import AgentGrid from '@/components/AgentGrid';
+import TaskList from '@/components/TaskList';
 
 export default function Home() {
   return (
@@ -12,6 +13,9 @@ export default function Home() {
         
         {/* Agent Status Cards */}
         <AgentGrid />
+        
+        {/* Task List */}
+        <TaskList />
         
         {/* Activity Feed */}
         <ActivityFeed />
