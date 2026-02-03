@@ -3,7 +3,7 @@ import { db, admin } from '@/lib/firebase-admin';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!db) {
     return NextResponse.json(
@@ -13,10 +13,9 @@ export async function PATCH(
   }
 
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const body = await request.json();
 
-    // Check if task exists
     const taskRef = db.collection('tasks').doc(taskId);
     const taskDoc = await taskRef.get();
 
@@ -27,8 +26,7 @@ export async function PATCH(
       );
     }
 
-    // Build update object (only include provided fields)
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -40,10 +38,8 @@ export async function PATCH(
     if (body.dueDate !== undefined) updates.dueDate = body.dueDate;
     if (body.tags !== undefined) updates.tags = body.tags;
 
-    // Update the task
     await taskRef.update(updates);
 
-    // Get the updated document
     const updatedDoc = await taskRef.get();
     const updatedTask = {
       id: taskId,
@@ -66,7 +62,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!db) {
     return NextResponse.json(
@@ -76,10 +72,9 @@ export async function DELETE(
   }
 
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const taskRef = db.collection('tasks').doc(taskId);
     
-    // Check if task exists
     const taskDoc = await taskRef.get();
     if (!taskDoc.exists) {
       return NextResponse.json(
@@ -88,7 +83,6 @@ export async function DELETE(
       );
     }
 
-    // Delete the task
     await taskRef.delete();
 
     return NextResponse.json({
