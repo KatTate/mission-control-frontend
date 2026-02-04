@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Add test agent data to Firestore
  * Run: node scripts/add-test-agents.js
