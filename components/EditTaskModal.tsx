@@ -166,7 +166,7 @@ export default function EditTaskModal({ isOpen, task, onClose, onSubmit }: EditT
               </label>
               <select
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as EditTaskFormData['priority'] })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isSubmitting}
               >
@@ -183,7 +183,7 @@ export default function EditTaskModal({ isOpen, task, onClose, onSubmit }: EditT
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as EditTaskFormData['status'] })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isSubmitting}
               >

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { getDb } from '@/lib/firebase-admin';
 
 export async function GET() {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
@@ -23,10 +24,10 @@ export async function GET() {
     }));
     
     return NextResponse.json({ activities });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching activities:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch activities' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch activities' },
       { status: 500 }
     );
   }

@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     "*.repl.co",
     "*.riker.replit.dev",
   ],
+
+  // Prevent Next from guessing the repo root when multiple lockfiles exist.
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;

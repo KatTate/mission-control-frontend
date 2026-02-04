@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+
+    // Local scripts are Node one-offs; we don't enforce ESM/TS rules on them.
+    "scripts/**",
   ]),
 ]);
 

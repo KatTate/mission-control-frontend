@@ -7,7 +7,7 @@ export interface Activity {
   taskId?: string;
   message: string;
   createdAt: string; // ISO string from API
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export function useActivities(maxResults = 50) {

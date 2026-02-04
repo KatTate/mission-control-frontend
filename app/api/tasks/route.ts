@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server';
-import { db, admin } from '@/lib/firebase-admin';
+import { getDb, admin } from '@/lib/firebase-admin';
+
+type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done';
+type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+type TaskInput = {
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignedTo?: string | null;
+  createdBy?: string | null;
+  dueDate?: string | null;
+  tags?: string[];
+};
 
 export async function GET() {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
@@ -36,6 +51,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
@@ -44,7 +60,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Partial<TaskInput>;
     
     // Validate required fields
     if (!body.title || !body.status || !body.priority) {
@@ -57,15 +73,15 @@ export async function POST(request: Request) {
     // Create task document
     const taskData = {
       title: body.title,
-      description: body.description || null,
+      description: body.description ?? null,
       status: body.status,
       priority: body.priority,
-      assignedTo: body.assignedTo || null,
-      createdBy: body.createdBy || 'd4mon', // Default to d4mon for now
+      assignedTo: body.assignedTo ?? null,
+      createdBy: body.createdBy ?? 'd4mon', // Default to d4mon for now
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      dueDate: body.dueDate || null,
-      tags: body.tags || [],
+      dueDate: body.dueDate ?? null,
+      tags: body.tags ?? [],
       messageCount: 0,
     };
 

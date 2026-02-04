@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { getDb } from '@/lib/firebase-admin';
 
 export async function GET() {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
@@ -28,10 +29,10 @@ export async function GET() {
     });
     
     return NextResponse.json({ agents });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching agents:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch agents' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch agents' },
       { status: 500 }
     );
   }

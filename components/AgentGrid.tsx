@@ -1,6 +1,6 @@
 'use client';
 
-import AgentCard, { type Agent } from './AgentCard';
+import AgentCard from './AgentCard';
 import { useAgents } from '@/hooks/useAgents';
 
 export default function AgentGrid() {

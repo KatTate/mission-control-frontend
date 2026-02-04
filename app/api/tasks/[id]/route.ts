@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { db, admin } from '@/lib/firebase-admin';
+import { getDb, admin } from '@/lib/firebase-admin';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
@@ -64,6 +65,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const db = getDb();
   if (!db) {
     return NextResponse.json(
       { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
