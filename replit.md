@@ -24,6 +24,12 @@ A Next.js 16 frontend application with TypeScript and Tailwind CSS. Uses Firebas
 ## Configuration Required
 This project requires a Firebase service account credential stored as a Replit Secret.
 
+## Security Model (MVP)
+- **Client uses API routes only** (`/api/*`).
+- API routes use **firebase-admin** (service account) to access Firestore.
+- Because of this, **Firestore rules can be locked down** (deny all client reads/writes).
+- Avoid client-side Firestore SDK unless we explicitly choose to add it.
+
 ### Setup Instructions
 1. Get the Firebase service account JSON file from the project owner (project: `gen-lang-client-0308019863`)
 2. In Replit, go to **Secrets** (lock icon in the left sidebar)

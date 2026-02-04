@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 
-export async function GET() {
+export async function GET(request: Request) {
   const db = getDb();
   if (!db) {
     return NextResponse.json(
@@ -11,16 +11,23 @@ export async function GET() {
   }
 
   try {
+    const url = new URL(request.url);
+    const limitParam = url.searchParams.get('limit');
+    const limit = Math.min(
+      200,
+      Math.max(1, Number.parseInt(limitParam || '50', 10) || 50)
+    );
+
     const snapshot = await db.collection('activities')
       .orderBy('createdAt', 'desc')
-      .limit(50)
+      .limit(limit)
       .get();
     
     const activities = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       // Convert Firestore Timestamp to ISO string for JSON serialization
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || null
+      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || null,
     }));
     
     return NextResponse.json({ activities });

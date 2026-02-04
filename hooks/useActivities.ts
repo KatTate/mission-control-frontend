@@ -19,7 +19,7 @@ export function useActivities(maxResults = 50) {
     // Initial fetch
     const fetchActivities = async () => {
       try {
-        const response = await fetch('/api/activities');
+        const response = await fetch(`/api/activities?limit=${encodeURIComponent(String(maxResults))}`);
         const data = await response.json();
         
         if (response.ok) {
