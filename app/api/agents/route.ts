@@ -17,13 +17,22 @@ export async function GET() {
     
     const agents = snapshot.docs.map(doc => {
       const data = doc.data();
+
+      // Allow schema evolution without breaking UI.
+      const lastHeartbeat =
+        data.lastHeartbeat?.toDate?.()?.toISOString?.() ||
+        data.lastSeen?.toDate?.()?.toISOString?.() ||
+        null;
+
+      const currentTaskId = data.currentTaskId || data.currentTask || null;
+
       return {
         id: doc.id,
-        name: data.name,
-        role: data.role,
+        name: data.name || doc.id,
+        role: data.role || 'Agent',
         status: data.status || 'offline',
-        lastSeen: data.lastSeen?.toDate?.()?.toISOString() || null,
-        currentTask: data.currentTask,
+        lastHeartbeat,
+        currentTaskId,
         tasksCompleted: data.tasksCompleted || 0,
       };
     });

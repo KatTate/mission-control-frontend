@@ -5,8 +5,8 @@ export interface Agent {
   name: string;
   role: string;
   status: 'active' | 'idle' | 'offline';
-  lastSeen?: string;
-  currentTask?: string;
+  lastHeartbeat?: string; // ISO timestamp
+  currentTaskId?: string;
   tasksCompleted?: number;
 }
 

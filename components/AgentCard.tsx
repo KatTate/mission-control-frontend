@@ -5,8 +5,8 @@ export interface Agent {
   name: string;
   role: string;
   status: 'active' | 'idle' | 'offline';
-  lastSeen?: string; // ISO timestamp
-  currentTask?: string;
+  lastHeartbeat?: string; // ISO timestamp
+  currentTaskId?: string;
   tasksCompleted?: number;
 }
 
@@ -27,8 +27,8 @@ const statusLabels = {
 };
 
 export default function AgentCard({ agent }: AgentCardProps) {
-  const timeSince = agent.lastSeen 
-    ? formatTimeSince(new Date(agent.lastSeen))
+  const heartbeatRelative = agent.lastHeartbeat
+    ? formatTimeSince(new Date(agent.lastHeartbeat))
     : 'Unknown';
 
   return (
@@ -37,9 +37,10 @@ export default function AgentCard({ agent }: AgentCardProps) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900 uppercase tracking-tight">
-            {agent.id}
+            {agent.name || agent.id}
           </h3>
           <p className="text-sm text-gray-600 mt-1">{agent.role}</p>
+          <p className="text-xs text-gray-500 mt-1 font-mono">id: {agent.id}</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className={`w-3 h-3 rounded-full ${statusColors[agent.status]} animate-pulse`} />
@@ -49,13 +50,14 @@ export default function AgentCard({ agent }: AgentCardProps) {
         </div>
       </div>
 
-      {/* Current Task (if active) */}
-      {agent.currentTask && (
-        <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-          <p className="text-sm font-semibold text-blue-900">Current Task:</p>
-          <p className="text-sm text-blue-700 mt-1">{agent.currentTask}</p>
+      {/* Required fields: lastHeartbeat + status + currentTaskId */}
+      <div className="mb-4 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+        <div className="grid grid-cols-1 gap-2 text-sm">
+          <Row label="lastHeartbeat" value={agent.lastHeartbeat ? `${heartbeatRelative} (${agent.lastHeartbeat})` : 'null'} />
+          <Row label="status" value={agent.status} />
+          <Row label="currentTaskId" value={agent.currentTaskId || 'null'} />
         </div>
-      )}
+      </div>
 
       {/* Stats */}
       <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-4">
@@ -63,10 +65,23 @@ export default function AgentCard({ agent }: AgentCardProps) {
           <span className="font-semibold">{agent.tasksCompleted || 0}</span> tasks completed
         </div>
         <div className="text-right">
-          <span className="text-xs text-gray-500">Last seen:</span>
+          <span className="text-xs text-gray-500">Heartbeat:</span>
           <br />
-          <span className="font-medium">{timeSince}</span>
+          <span className="font-medium">{heartbeatRelative}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        {label}
+      </div>
+      <div className="text-right font-mono text-xs text-zinc-800 break-all">
+        {value}
       </div>
     </div>
   );
