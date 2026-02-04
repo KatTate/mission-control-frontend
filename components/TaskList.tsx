@@ -13,11 +13,16 @@ export interface Task {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string; // Agent ID
   createdBy?: string; // Agent ID
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
-  dueDate?: string; // ISO timestamp
+  createdAt: any; // Firestore Timestamp | ISO string
+  updatedAt: any; // Firestore Timestamp | ISO string
+  dueDate?: any; // Firestore Timestamp | ISO string
   tags?: string[];
   messageCount?: number;
+
+  // Approval audit trail
+  approvedToExecute?: boolean;
+  approvedBy?: string | null;
+  approvedAt?: any; // Firestore Timestamp | null
 }
 
 const statusColors = {
@@ -48,9 +53,41 @@ const statusLabels = {
   done: 'Done',
 };
 
+function toJsDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value?.toDate === 'function') {
+    const d = value.toDate();
+    return d instanceof Date && !isNaN(d.getTime()) ? d : null;
+  }
+  const seconds = value?.seconds ?? value?._seconds;
+  if (typeof seconds === 'number') {
+    const d = new Date(seconds * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+function formatDateShort(value: any): string {
+  const d = toJsDate(value);
+  if (!d) return '—';
+  return d.toLocaleDateString();
+}
+
+function formatDateTime(value: any): string {
+  const d = toJsDate(value);
+  if (!d) return '—';
+  return d.toLocaleString();
+}
+
 export default function TaskList() {
   const { tasks, loading, error, refetch } = useTasks();
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'blocked' | 'done'>('all');
+  const [approvedOnly, setApprovedOnly] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -122,9 +159,14 @@ export default function TaskList() {
     setIsEditModalOpen(true);
   };
 
-  const filteredTasks = filter === 'all' 
-    ? tasks 
-    : tasks.filter(task => task.status === filter);
+  const filteredTasks = (() => {
+    const statusFiltered = filter === 'all'
+      ? tasks
+      : tasks.filter(task => task.status === filter);
+
+    if (!approvedOnly) return statusFiltered;
+    return statusFiltered.filter(task => task.approvedToExecute === true);
+  })();
 
   if (loading) {
     return (
@@ -185,6 +227,12 @@ export default function TaskList() {
               active={filter === 'all'} 
               onClick={() => setFilter('all')}
               count={tasks.length}
+            />
+            <FilterButton 
+              label="Approved ✅" 
+              active={approvedOnly}
+              onClick={() => setApprovedOnly(!approvedOnly)}
+              count={tasks.filter(t => t.approvedToExecute === true).length}
             />
             <FilterButton 
               label="To Do" 
@@ -304,6 +352,14 @@ function TaskRow({ task, onEdit, onDelete }: TaskRowProps) {
               💬 {task.messageCount}
             </span>
           )}
+          {task.approvedToExecute === true && (
+            <span
+              className="px-2 py-1 rounded-md text-xs font-semibold border bg-green-50 text-green-700 border-green-200"
+              title={`Approved by ${task.approvedBy ?? '—'} • ${formatDateTime(task.approvedAt)}`}
+            >
+              Approved ✅
+            </span>
+          )}
           <span className={`px-3 py-1 rounded-md text-xs font-semibold border ${statusColors[task.status]}`}>
             {statusLabels[task.status]}
           </span>
@@ -313,15 +369,30 @@ function TaskRow({ task, onEdit, onDelete }: TaskRowProps) {
       {/* Expanded view */}
       {expanded && (
         <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600 space-y-3">
-          <div className="flex space-x-6">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <div>
+              <span className="font-semibold">Approval:</span>{' '}
+              {task.approvedToExecute === true ? (
+                <>
+                  <span className="text-green-700 font-semibold">Approved ✅</span>
+                  <span className="text-gray-500">
+                    {' '}by <span className="uppercase font-mono">@{task.approvedBy ?? '—'}</span>
+                    {' '}at {formatDateTime(task.approvedAt)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-700">Not approved</span>
+              )}
+            </div>
+
             <div>
               <span className="font-semibold">Created:</span>{' '}
-              {new Date(task.createdAt).toLocaleDateString()}
+              {formatDateShort(task.createdAt)}
             </div>
             {task.dueDate && (
               <div>
                 <span className="font-semibold">Due:</span>{' '}
-                {new Date(task.dueDate).toLocaleDateString()}
+                {formatDateShort(task.dueDate)}
               </div>
             )}
             {task.createdBy && (
