@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Task } from '@/components/TaskList';
 
-export default function useTasks() {
+export default function useTasks(options?: { includeArchived?: boolean }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch('/api/tasks'); // archived hidden by default server-side
+      const includeArchived = options?.includeArchived === true;
+      const url = includeArchived ? '/api/tasks?includeArchived=true' : '/api/tasks';
+      const response = await fetch(url); // archived hidden by default server-side
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -25,7 +27,7 @@ export default function useTasks() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [options?.includeArchived]);
 
   useEffect(() => {
     fetchTasks();

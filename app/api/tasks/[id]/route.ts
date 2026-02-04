@@ -39,6 +39,13 @@ export async function PATCH(
     if (body.dueDate !== undefined) updates.dueDate = body.dueDate;
     if (body.tags !== undefined) updates.tags = body.tags;
 
+    // Next Action (operational one-liner)
+    if (body.nextAction !== undefined) {
+      updates.nextAction = body.nextAction;
+      updates.nextActionUpdatedAt = admin.firestore.FieldValue.serverTimestamp();
+      updates.nextActionUpdatedBy = body.nextActionUpdatedBy ?? 'd4mon';
+    }
+
     await taskRef.update(updates);
 
     const updatedDoc = await taskRef.get();

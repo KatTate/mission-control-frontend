@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useTasks from '@/hooks/useTasks';
 import { useAgents } from '@/hooks/useAgents';
 import ActivityFeed from '@/components/ActivityFeed';
 import type { Task } from '@/components/TaskList';
+import useMessages from '@/hooks/useMessages';
 
 type TaskStatus = Task['status'];
 
@@ -47,6 +48,140 @@ function formatAgo(value: any): string {
   return `${days}d ago`;
 }
 
+type TaskDetailProps = {
+  task: Task;
+  messages: any[];
+  messagesLoading: boolean;
+  messagesError: string | null;
+  indexFallback: boolean;
+  formatAgo: (value: any) => string;
+};
+
+function TaskDetail({ task, messages, messagesLoading, messagesError, indexFallback, formatAgo }: TaskDetailProps) {
+  const [nextAction, setNextAction] = useState<string>(task.nextAction ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Keep textarea in sync when selecting a different task
+  useEffect(() => {
+    setNextAction(task.nextAction ?? '');
+    setSaveError(null);
+  }, [task.id, task.nextAction]);
+
+  const saveNextAction = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nextAction: nextAction.trim() ? nextAction.trim() : null,
+          nextActionUpdatedBy: 'd4mon',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to update next action');
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="text-lg font-bold">{task.title}</div>
+        <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{task.description || '—'}</div>
+        <div className="mt-2 text-xs text-zinc-500">Task ID: {task.id}</div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-zinc-500">Status</div>
+          <div className="font-semibold">{task.status}</div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-zinc-500">Assigned</div>
+          <div className="font-semibold">{task.assignedTo ? `@${task.assignedTo}` : '—'}</div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-zinc-500">Approval</div>
+          {task.approvedToExecute === true ? (
+            <div className="font-semibold text-green-700">
+              Approved ✅
+              <div className="text-xs text-zinc-500">by @{task.approvedBy ?? '—'} • {formatAgo(task.approvedAt)}</div>
+            </div>
+          ) : (
+            <div className="font-semibold">Not approved</div>
+          )}
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-zinc-500">Updated</div>
+          <div className="font-semibold">{formatAgo(task.updatedAt)}</div>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Next Action</div>
+          <div className="text-xs text-zinc-500">
+            {task.nextActionUpdatedBy ? `@${task.nextActionUpdatedBy}` : ''}{' '}
+            {task.nextActionUpdatedAt ? `• ${formatAgo(task.nextActionUpdatedAt)}` : ''}
+          </div>
+        </div>
+        <textarea
+          value={nextAction}
+          onChange={(e) => setNextAction(e.target.value)}
+          rows={3}
+          className="w-full rounded-md border border-zinc-200 bg-white p-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+          placeholder="One line: what happens next?"
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <div className="text-xs text-red-600">{saveError || ''}</div>
+          <button
+            onClick={saveNextAction}
+            disabled={saving}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-zinc-400"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Thread</div>
+          {indexFallback && (
+            <div className="text-[11px] text-amber-600">Index pending (using fallback)</div>
+          )}
+        </div>
+
+        {messagesLoading ? (
+          <div className="text-sm text-zinc-500">Loading messages…</div>
+        ) : messagesError ? (
+          <div className="text-sm text-red-600">{messagesError}</div>
+        ) : messages.length === 0 ? (
+          <div className="text-sm text-zinc-500">No messages yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {messages.slice(0, 20).map((m: any) => (
+              <div key={m.id} className="rounded-md border border-zinc-200 p-2 text-sm dark:border-zinc-800">
+                <div className="flex items-center justify-between text-xs text-zinc-500">
+                  <span>{m.author ? `@${m.author}` : '—'}</span>
+                  <span>{formatAgo(m.createdAt)}</span>
+                </div>
+                <div className="mt-1 whitespace-pre-wrap">{m.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CommandCenter() {
   const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
   const { agents, loading: agentsLoading, error: agentsError } = useAgents();
@@ -57,6 +192,8 @@ export default function CommandCenter() {
     () => tasks.find((t) => t.id === selectedTaskId) ?? null,
     [tasks, selectedTaskId]
   );
+
+  const { messages, loading: messagesLoading, error: messagesError, indexFallback } = useMessages(selectedTaskId);
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, Task[]> = {
@@ -172,44 +309,14 @@ export default function CommandCenter() {
           {!selectedTask ? (
             <div className="text-sm text-zinc-500">Select a task from the queue.</div>
           ) : (
-            <div className="space-y-3">
-              <div>
-                <div className="text-lg font-bold">{selectedTask.title}</div>
-                <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {selectedTask.description || '—'}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-500">Status</div>
-                  <div className="font-semibold">{selectedTask.status}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-500">Assigned</div>
-                  <div className="font-semibold">{selectedTask.assignedTo ? `@${selectedTask.assignedTo}` : '—'}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-500">Approval</div>
-                  {selectedTask.approvedToExecute === true ? (
-                    <div className="font-semibold text-green-700">
-                      Approved ✅
-                      <div className="text-xs text-zinc-500">
-                        by @{selectedTask.approvedBy ?? '—'} • {formatAgo(selectedTask.approvedAt)}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="font-semibold">Not approved</div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-500">Updated</div>
-                  <div className="font-semibold">{formatAgo(selectedTask.updatedAt)}</div>
-                </div>
-              </div>
-
-              <div className="text-xs text-zinc-500">Task ID: {selectedTask.id}</div>
-            </div>
+            <TaskDetail
+              task={selectedTask}
+              messages={messages}
+              messagesLoading={messagesLoading}
+              messagesError={messagesError}
+              indexFallback={indexFallback}
+              formatAgo={formatAgo}
+            />
           )}
         </div>
       </section>

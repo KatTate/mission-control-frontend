@@ -26,6 +26,11 @@ export interface Task {
 
   // Archive (seed cleanup / historical)
   archived?: boolean;
+
+  // Operational one-liner
+  nextAction?: string | null;
+  nextActionUpdatedAt?: any;
+  nextActionUpdatedBy?: string;
 }
 
 const statusColors = {
@@ -88,7 +93,8 @@ function formatDateTime(value: any): string {
 }
 
 export default function TaskList() {
-  const { tasks, loading, error, refetch } = useTasks();
+  const [showArchived, setShowArchived] = useState(false);
+  const { tasks, loading, error, refetch } = useTasks({ includeArchived: showArchived });
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'blocked' | 'done'>('all');
   const [approvedOnly, setApprovedOnly] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -230,6 +236,12 @@ export default function TaskList() {
               active={filter === 'all'} 
               onClick={() => setFilter('all')}
               count={tasks.length}
+            />
+            <FilterButton 
+              label={showArchived ? 'Hide Archived' : 'Show Archived'}
+              active={showArchived}
+              onClick={() => setShowArchived(!showArchived)}
+              count={tasks.filter(t => t.archived === true).length}
             />
             <FilterButton 
               label="Approved ✅" 
