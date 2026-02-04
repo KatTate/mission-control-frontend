@@ -23,6 +23,9 @@ export interface Task {
   approvedToExecute?: boolean;
   approvedBy?: string | null;
   approvedAt?: any; // Firestore Timestamp | null
+
+  // Archive (seed cleanup / historical)
+  archived?: boolean;
 }
 
 const statusColors = {

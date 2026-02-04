@@ -15,7 +15,7 @@ type TaskInput = {
   tags?: string[];
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const db = getDb();
   if (!db) {
     return NextResponse.json(
@@ -25,20 +25,29 @@ export async function GET() {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const includeArchived = searchParams.get('includeArchived') === 'true';
+
     const tasksSnapshot = await db.collection('tasks')
       .orderBy('createdAt', 'desc')
-      .limit(100)
+      .limit(200)
       .get();
 
-    const tasks = tasksSnapshot.docs.map(doc => ({
+    const allTasks = tasksSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    return NextResponse.json({ 
+    // Default behavior: hide archived tasks. (Archived tasks are historical/seed cleanup.)
+    const tasks = includeArchived
+      ? allTasks
+      : allTasks.filter((t: any) => t?.archived !== true);
+
+    return NextResponse.json({
       tasks,
       count: tasks.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      includeArchived,
     });
 
   } catch (error) {

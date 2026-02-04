@@ -10,7 +10,7 @@ export default function useTasks() {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch('/api/tasks');
+      const response = await fetch('/api/tasks'); // archived hidden by default server-side
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
