@@ -19,7 +19,7 @@ interface TaskDetailDrawerProps {
 }
 
 export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProps) {
-  const { messages, loading: messagesLoading, error: messagesError } = useMessages(task?.id ?? null);
+  const { messages, loading: messagesLoading, error: messagesError, indexFallback } = useMessages(task?.id ?? null);
   const [nextAction, setNextAction] = useState(task?.nextAction ?? '');
   const [saving, setSaving] = useState(false);
 
@@ -45,7 +45,10 @@ export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDr
       await fetch(`/api/tasks/${task.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nextAction: nextAction.trim() || null }),
+        body: JSON.stringify({
+          nextAction: nextAction.trim() || null,
+          nextActionUpdatedBy: 'd4mon',
+        }),
       });
     } finally {
       setSaving(false);
@@ -163,8 +166,13 @@ export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDr
 
           {/* Thread */}
           <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-            <div className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
-              Thread ({messages.length})
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs uppercase tracking-wider text-zinc-500">
+                Thread ({messages.length})
+              </div>
+              {indexFallback && (
+                <div className="text-[11px] text-amber-600">Index pending (using fallback)</div>
+              )}
             </div>
             {messagesLoading ? (
               <div className="text-sm text-zinc-400">Loading...</div>
