@@ -10,8 +10,9 @@ interface AgentSidebarProps {
   onSelectAgent: (agentId: string | null) => void;
 }
 
-const roleBadges: Record<string, { label: string; color: string }> = {
+const tierBadges: Record<string, { label: string; color: string }> = {
   lead: { label: 'LEAD', color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  spec: { label: 'SPC', color: 'bg-purple-100 text-purple-800 border-purple-300' },
   specialist: { label: 'SPC', color: 'bg-purple-100 text-purple-800 border-purple-300' },
   intern: { label: 'INT', color: 'bg-blue-100 text-blue-800 border-blue-300' },
 };
@@ -22,11 +23,12 @@ const statusColors: Record<string, string> = {
   offline: 'bg-gray-400',
 };
 
-function getBadgeType(role: string): string {
-  const lower = role.toLowerCase();
-  if (lower.includes('lead') || lower.includes('founder')) return 'lead';
-  if (lower.includes('intern') || lower.includes('junior')) return 'intern';
-  return 'specialist';
+function getTier(agent: Agent): string {
+  const tier = (agent.tier || '').toString().toLowerCase().trim();
+  if (tier === 'lead') return 'lead';
+  if (tier === 'intern') return 'intern';
+  if (tier === 'spec' || tier === 'specialist') return 'spec';
+  return tier || 'spec';
 }
 
 function formatLastSeen(lastHeartbeat?: string): string {
@@ -109,9 +111,11 @@ export default function AgentSidebar({
       {/* Agent list */}
       <div className="flex-1 overflow-y-auto">
         {agents.map((agent) => {
-          const badgeType = getBadgeType(agent.role);
-          const badge = roleBadges[badgeType];
+          const tier = getTier(agent);
+          const badge = tierBadges[tier] || tierBadges.spec;
           const isWorking = agent.status === 'active' || agent.currentTaskId;
+          const displayName = agent.name || agent.id;
+          const displayTitle = agent.title || agent.role;
 
           return (
             <button
@@ -136,12 +140,17 @@ export default function AgentSidebar({
                 {/* Name and role */}
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-sm">{agent.id}</span>
+                    <span className="font-bold text-sm">{displayName}</span>
                     <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded border ${badge.color}`}>
                       {badge.label}
                     </span>
                   </div>
-                  <div className="text-xs text-zinc-500 truncate max-w-[120px]">{agent.role}</div>
+                  <div className="text-xs text-zinc-500 truncate max-w-[160px]">{displayTitle}</div>
+                  {agent.workingSummary && (
+                    <div className="mt-0.5 text-[11px] text-zinc-500 truncate max-w-[160px]">
+                      {agent.workingSummary}
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -34,6 +34,11 @@ export async function GET() {
         lastHeartbeat,
         currentTaskId,
         tasksCompleted: data.tasksCompleted || 0,
+
+        // Extended fields (new UI source of truth)
+        title: data.title || null,
+        tier: data.tier || null,
+        workingSummary: data.workingSummary || null,
       };
     });
     

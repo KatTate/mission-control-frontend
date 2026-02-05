@@ -8,6 +8,11 @@ export interface Agent {
   lastHeartbeat?: string; // ISO timestamp
   currentTaskId?: string;
   tasksCompleted?: number;
+
+  // Mission Control fields
+  title?: string;
+  tier?: 'lead' | 'spec' | 'intern' | string;
+  workingSummary?: string;
 }
 
 interface AgentCardProps {
