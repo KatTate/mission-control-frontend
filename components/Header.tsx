@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useMeta from '@/hooks/useMeta';
 
 interface HeaderProps {
   agentsActive: number;
@@ -25,6 +26,8 @@ export default function Header({
   const [currentDate, setCurrentDate] = useState<string>('');
   const [isOnline, setIsOnline] = useState(true);
 
+  const { meta } = useMeta();
+
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -37,11 +40,13 @@ export default function Header({
         })
       );
       setCurrentDate(
-        now.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        }).toUpperCase()
+        now
+          .toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          })
+          .toUpperCase()
       );
     };
 
@@ -52,6 +57,8 @@ export default function Header({
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // meta handled by useMeta hook
 
     return () => {
       clearInterval(interval);
@@ -69,8 +76,24 @@ export default function Header({
             <span className="text-xl">⊙</span>
             <span className="text-lg font-bold tracking-tight">MISSION CONTROL</span>
           </div>
-          <div className="hidden sm:block px-3 py-1 bg-zinc-100 rounded text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {projectName}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-zinc-100 rounded text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            <span>{projectName}</span>
+            {meta?.gitShaShort && (
+              <span
+                className="px-2 py-0.5 rounded bg-white/70 text-xs font-mono text-zinc-700 border border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-300 dark:border-zinc-700"
+                title={`build: ${meta.gitShaShort}${meta.firebaseProjectId ? `\nfirebase: ${meta.firebaseProjectId}` : ''}${meta.serverTime ? `\nserver: ${meta.serverTime}` : ''}`}
+              >
+                {meta.gitShaShort}
+              </span>
+            )}
+            {meta?.firebaseProjectId && (
+              <span
+                className="px-2 py-0.5 rounded bg-white/70 text-[10px] font-mono text-zinc-600 border border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-400 dark:border-zinc-700"
+                title={`firebase: ${meta.firebaseProjectId}`}
+              >
+                {meta.firebaseProjectId}
+              </span>
+            )}
           </div>
         </div>
 
@@ -118,6 +141,18 @@ export default function Header({
             <div className="text-lg font-mono font-bold text-zinc-900 dark:text-zinc-100">{currentTime}</div>
             <div className="text-xs text-zinc-500">{currentDate}</div>
           </div>
+
+          {/* Build meta */}
+          {meta && (
+            <div className="hidden xl:flex flex-col items-end px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800">
+              <div className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300">
+                build: {meta.gitShaShort ?? 'unknown'}
+              </div>
+              <div className="text-[10px] font-mono text-zinc-500">
+                fb: {meta.firebaseProjectId ?? 'unknown'}
+              </div>
+            </div>
+          )}
 
           {/* Online status */}
           <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800">
