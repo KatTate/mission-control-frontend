@@ -1,15 +1,33 @@
 import { NextResponse } from 'next/server';
+import { execSync } from 'child_process';
+
+let cachedGitShaShort: { value: string | null; atMs: number } = { value: null, atMs: 0 };
 
 function getGitSha() {
   const envSha =
     process.env.GIT_SHA ||
     process.env.VERCEL_GIT_COMMIT_SHA ||
     process.env.REPLIT_GIT_COMMIT_SHA ||
-    process.env.REPL_ID ||
     process.env.COMMIT_SHA;
 
-  if (!envSha) return null;
-  return envSha;
+  if (envSha) return envSha;
+
+  // Fallback (Replit/dev): derive from the checked-out repo.
+  // Cache for 30s to avoid spawning git on every request.
+  const now = Date.now();
+  if (now - cachedGitShaShort.atMs < 30_000) return cachedGitShaShort.value;
+
+  try {
+    const sha = execSync('git rev-parse HEAD', { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+
+    cachedGitShaShort = { value: sha || null, atMs: now };
+    return cachedGitShaShort.value;
+  } catch {
+    cachedGitShaShort = { value: null, atMs: now };
+    return null;
+  }
 }
 
 function getFirebaseProjectId() {
