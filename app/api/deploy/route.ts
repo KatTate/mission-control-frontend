@@ -12,6 +12,7 @@ function findRepoRoot(startDir: string): string | null {
 
   const walkUp = (dir: string) => {
     let cur = dir;
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (hasMarkers(cur)) return cur;
       const parent = path.dirname(cur);
@@ -20,6 +21,7 @@ function findRepoRoot(startDir: string): string | null {
     }
   };
 
+  // Try a few likely bases (Replit/Next can change cwd).
   const candidates = [
     startDir,
     process.env.REPL_HOME,
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
     build?: boolean;
   };
 
+  // Next.js/Replit may run API routes from a build dir; locate the repo root.
   const cwd = findRepoRoot(process.cwd());
   if (!cwd) {
     return NextResponse.json(
