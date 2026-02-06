@@ -1,7 +1,20 @@
 import { NextResponse } from 'next/server';
 import { execSync } from 'child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 let cachedGitShaShort: { value: string | null; atMs: number } = { value: null, atMs: 0 };
+
+function findRepoRoot(startDir: string): string | null {
+  let dir = startDir;
+  for (let i = 0; i < 10; i++) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
 
 function getGitSha() {
   const envSha =
@@ -18,7 +31,10 @@ function getGitSha() {
   if (now - cachedGitShaShort.atMs < 30_000) return cachedGitShaShort.value;
 
   try {
-    const sha = execSync('git rev-parse HEAD', { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'ignore'] })
+    const repoRoot = findRepoRoot(process.cwd());
+    const cwd = repoRoot || process.cwd();
+
+    const sha = execSync('git rev-parse HEAD', { cwd, stdio: ['ignore', 'pipe', 'ignore'] })
       .toString()
       .trim();
 

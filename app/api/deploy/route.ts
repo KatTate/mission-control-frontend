@@ -72,6 +72,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     restart?: boolean;
     build?: boolean;
+    install?: boolean;
   };
 
   // Next.js/Replit may run API routes from a build dir; locate the repo root.
@@ -104,6 +105,24 @@ export async function POST(request: Request) {
     );
   }
 
+  // 2) Dependencies (default true): npm ci if lockfile exists, else npm install
+  const doInstall = body.install !== false;
+  if (doInstall) {
+    try {
+      const hasLock = fs.existsSync(path.join(cwd, 'package-lock.json'));
+      const args = hasLock ? ['ci'] : ['install'];
+      const res = await sh('npm', args, cwd);
+      logs.push({ step: `npm ${args.join(' ')}`, out: res.stdout, err: res.stderr });
+    } catch (e: any) {
+      logs.push({ step: 'npm install/ci', err: String(e?.message || e) });
+      return NextResponse.json(
+        { ok: false, shaBefore, shaAfter: await gitSha(cwd), logs },
+        { status: 500 }
+      );
+    }
+  }
+
+  // 3) Build
   const doBuild = body.build !== false;
   if (doBuild) {
     try {
