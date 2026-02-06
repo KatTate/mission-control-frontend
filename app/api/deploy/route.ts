@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,6 +25,19 @@ async function gitSha(cwd: string) {
   }
 }
 
+function findRepoRoot(): string {
+  let dir = process.cwd();
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(resolve(dir, '.git')) && existsSync(resolve(dir, 'package.json'))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return process.cwd();
+}
+
 export async function POST(request: Request) {
   const secret = process.env.DEPLOY_SECRET;
   if (!secret) {
@@ -42,14 +57,14 @@ export async function POST(request: Request) {
     build?: boolean;
   };
 
-  // Replit runs the app from the repo root.
-  const cwd = process.cwd();
+  const cwd = findRepoRoot();
 
   const shaBefore = await gitSha(cwd);
 
   const logs: Array<{ step: string; out?: string; err?: string }> = [];
 
-  // 1) Pull latest
+  logs.push({ step: 'repo-root', out: cwd });
+
   try {
     const res = await sh('git', ['pull', 'origin', 'main'], cwd);
     logs.push({ step: 'git pull origin main', out: res.stdout, err: res.stderr });
@@ -61,8 +76,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2) Optional build
-  const doBuild = body.build !== false; // default true
+  const doBuild = body.build !== false;
   if (doBuild) {
     try {
       const res = await sh('npm', ['run', '-s', 'build'], cwd);
@@ -78,12 +92,10 @@ export async function POST(request: Request) {
 
   const shaAfter = await gitSha(cwd);
 
-  // 3) Optional restart
   const restart = body.restart === true;
   if (restart) {
     logs.push({ step: 'restart', out: 'process.exit(0) scheduled (Replit should restart on exit)' });
     setTimeout(() => {
-      // eslint-disable-next-line no-process-exit
       process.exit(0);
     }, 750);
   }

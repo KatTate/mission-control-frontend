@@ -94,6 +94,9 @@ export default function Header({
                 {meta.firebaseProjectId}
               </span>
             )}
+            <span className="px-2 py-0.5 rounded bg-green-100 text-[10px] font-bold text-green-700 border border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-700">
+              DEPLOY AUTO
+            </span>
           </div>
         </div>
 
