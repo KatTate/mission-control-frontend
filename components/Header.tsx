@@ -17,7 +17,7 @@ export default function Header({
   agentsActive,
   agentsTotal,
   tasksInQueue,
-  projectName = 'SiteGPT',
+  projectName = '',
   onChatClick,
   onBroadcastClick,
   onDocsClick,
@@ -77,7 +77,7 @@ export default function Header({
             <span className="text-lg font-bold tracking-tight">MISSION CONTROL</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-zinc-100 rounded text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            <span>{projectName}</span>
+            {projectName ? <span>{projectName}</span> : null}
             {meta?.gitShaShort && (
               <span
                 className="px-2 py-0.5 rounded bg-white/70 text-xs font-mono text-zinc-700 border border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-300 dark:border-zinc-700"
