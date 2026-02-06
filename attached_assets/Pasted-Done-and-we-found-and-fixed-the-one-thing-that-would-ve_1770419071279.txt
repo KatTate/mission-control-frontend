@@ -1,0 +1,55 @@
+Done — and we found (and fixed) the one thing that would’ve made your “auto deploy after every push” silently fail.
+
+1) “Obvious feature change” you can verify
+
+I pushed a UI change that adds a green “DEPLOY AUTO” badge in the header next to the project name.
+
+• Commit: 5cb99e4 (badge)
+That badge is your visual “yes, the new build is live.”
+2) Auto-deploy after every push (OpenClaw side)
+
+I added two scripts to the OpenClaw workspace:
+
+• ~/.openclaw/workspace/scripts/mission-control/deploy-replit.sh
+Calls POST https://mission-control-frontend.replit.app/api/deploy with x-deploy-secret and {"restart": true}.
+• ~/.openclaw/workspace/scripts/mission-control/push-and-deploy-frontend.sh
+Commits (if needed) → git push origin main → immediately triggers Replit deploy.
+And I stored the deploy secret in:
+
+• ~/.openclaw/workspace/private/replit_deploy_secret.txt
+(so it’s not in git)
+So when we push from OpenClaw using that script, deploy happens automatically.
+
+3) The critical fix (why it failed when I tested)
+
+When I tried triggering /api/deploy, it returned:
+
+fatal: not a git repository …
+
+
+Meaning: on Replit, the Next.js API route was running with a cwd that is not the repo root.
+
+I fixed /api/deploy to locate the repo root by walking up directories until it finds .git + package.json:
+
+• Commit: 69162b9 (deploy endpoint now finds repo root reliably)
+4) What you need to do ONE TIME right now
+
+Because /api/deploy was broken in the currently-running Replit build, it can’t self-heal until you pull once.
+
+In Replit Shell:
+git pull origin main
+git rev-parse --short HEAD
+You should end up at 69162b9 (or later). Then hit Run.
+
+After that, /api/deploy is fixed, and from then on OpenClaw can deploy automatically via webhook on every push.
+
+5) Test (the “does it work” moment)
+
+After you’re on 69162b9, run:
+curl -sS -X POST "https://mission-control-frontend.replit.app/api/deploy" \
+  -H "content-type: application/json" \
+  -H "x-deploy-secret: $DEPLOY_SECRET" \
+  -d '{"restart": true}'
+Then refresh the site: you should see the DEPLOY AUTO badge, and /api/meta should show the new SHA.
+
+If you paste what git rev-parse --short HEAD shows after the pull, I’ll confirm you’re on the fixed deploy build before you even test the UI.
