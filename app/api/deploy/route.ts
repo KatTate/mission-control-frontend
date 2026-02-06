@@ -1,10 +1,38 @@
 import { NextResponse } from 'next/server';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
+
+function findRepoRoot(startDir: string): string | null {
+  const hasMarkers = (dir: string) =>
+    fs.existsSync(path.join(dir, '.git')) && fs.existsSync(path.join(dir, 'package.json'));
+
+  const walkUp = (dir: string) => {
+    let cur = dir;
+    while (true) {
+      if (hasMarkers(cur)) return cur;
+      const parent = path.dirname(cur);
+      if (parent === cur) return null;
+      cur = parent;
+    }
+  };
+
+  const candidates = [
+    startDir,
+    process.env.REPL_HOME,
+    process.env.PWD,
+  ].filter(Boolean) as string[];
+
+  for (const c of candidates) {
+    const root = walkUp(c);
+    if (root) return root;
+  }
+
+  return null;
+}
 
 async function sh(cmd: string, args: string[], cwd: string) {
   const { stdout, stderr } = await execFileAsync(cmd, args, {
@@ -23,19 +51,6 @@ async function gitSha(cwd: string) {
   } catch {
     return null;
   }
-}
-
-function findRepoRoot(): string {
-  let dir = process.cwd();
-  for (let i = 0; i < 10; i++) {
-    if (existsSync(resolve(dir, '.git')) && existsSync(resolve(dir, 'package.json'))) {
-      return dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return process.cwd();
 }
 
 export async function POST(request: Request) {
@@ -57,7 +72,17 @@ export async function POST(request: Request) {
     build?: boolean;
   };
 
-  const cwd = findRepoRoot();
+  const cwd = findRepoRoot(process.cwd());
+  if (!cwd) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'Could not locate repo root (.git + package.json) to run deploy commands',
+        debug: { cwd: process.cwd(), replHome: process.env.REPL_HOME ?? null },
+      },
+      { status: 500 }
+    );
+  }
 
   const shaBefore = await gitSha(cwd);
 
