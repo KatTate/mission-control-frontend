@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/firebase-admin';
+import { getDb, admin } from '@/lib/firebase-admin';
+
+type MessageInput = {
+  taskId: string;
+  text: string;
+  authorId?: string | null;
+  authorName?: string | null;
+  kind?: 'comment' | 'note' | 'system';
+};
 
 export async function GET(request: Request) {
   const db = getDb();
@@ -80,5 +88,67 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
+  }
+}
+
+export async function POST(request: Request) {
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Firebase not configured. Please set FIREBASE_SERVICE_ACCOUNT secret.' },
+      { status: 503 }
+    );
+  }
+
+  try {
+    const body = (await request.json()) as Partial<MessageInput>;
+    const taskId = body.taskId?.trim();
+    const text = body.text?.trim();
+
+    if (!taskId) return NextResponse.json({ error: 'Missing taskId' }, { status: 400 });
+    if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
+
+    const authorId = (body.authorId ?? 'human')?.toString();
+    const authorName = body.authorName ?? null;
+    const kind = body.kind ?? 'comment';
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const messageData = {
+      taskId,
+      text,
+      kind,
+      authorId,
+      authorName,
+      createdAt: now,
+    };
+
+    const docRef = await db.collection('messages').add(messageData);
+
+    await db.collection('tasks').doc(taskId).set(
+      {
+        messageCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    await db.collection('activities').add({
+      type: 'message_sent',
+      taskId,
+      summary: `${authorName || authorId} commented on task`,
+      createdAt: now,
+    });
+
+    return NextResponse.json(
+      { message: { id: docRef.id, ...messageData }, timestamp: new Date().toISOString() },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Error creating message:', error);
+    return NextResponse.json(
+      { error: 'Failed to create message', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
