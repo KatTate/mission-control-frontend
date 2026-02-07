@@ -22,10 +22,17 @@ export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDr
   const { messages, loading: messagesLoading, error: messagesError, indexFallback } = useMessages(task?.id ?? null);
   const [nextAction, setNextAction] = useState(task?.nextAction ?? '');
   const [saving, setSaving] = useState(false);
+  const [approvalSaving, setApprovalSaving] = useState(false);
+  const [approvedToExecute, setApprovedToExecute] = useState<boolean>(Boolean(task?.approvedToExecute));
+  const [approvedBy, setApprovedBy] = useState<string | null>(task?.approvedBy ?? null);
+  const [approvedAt, setApprovedAt] = useState<unknown>(task?.approvedAt ?? null);
 
   useEffect(() => {
     setNextAction(task?.nextAction ?? '');
-  }, [task?.id, task?.nextAction]);
+    setApprovedToExecute(Boolean(task?.approvedToExecute));
+    setApprovedBy(task?.approvedBy ?? null);
+    setApprovedAt(task?.approvedAt ?? null);
+  }, [task?.id, task?.nextAction, task?.approvedToExecute, task?.approvedBy, task?.approvedAt]);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,10 +55,44 @@ export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDr
         body: JSON.stringify({
           nextAction: nextAction.trim() || null,
           nextActionUpdatedBy: 'd4mon',
+          agentId: 'd4mon',
         }),
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const setApproval = async (approved: boolean) => {
+    if (!task) return;
+    setApprovalSaving(true);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approvedToExecute: approved,
+          approvedBy: 'tate',
+          agentId: 'k3rnel',
+        }),
+      });
+
+      if (!res.ok) return;
+      const json = await res.json();
+      const t = json?.task ?? null;
+      if (t) {
+        setApprovedToExecute(Boolean(t.approvedToExecute));
+        setApprovedBy(t.approvedBy ?? null);
+        setApprovedAt(t.approvedAt ?? null);
+      } else {
+        setApprovedToExecute(approved);
+        if (!approved) {
+          setApprovedBy(null);
+          setApprovedAt(null);
+        }
+      }
+    } finally {
+      setApprovalSaving(false);
     }
   };
 
@@ -115,16 +156,35 @@ export default function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDr
           </div>
 
           {/* Approval status */}
-          {task.approvedToExecute && (
-            <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="text-sm font-semibold text-green-800 dark:text-green-400">
-                ✅ Approved to Execute
-              </div>
-              <div className="text-xs text-green-600 dark:text-green-500 mt-1">
-                by @{task.approvedBy ?? '—'} • {formatAgo(task.approvedAt)}
-              </div>
+          <div className={`p-3 border rounded-lg ${approvedToExecute ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'}`}>
+            <div className={`text-sm font-semibold ${approvedToExecute ? 'text-green-800 dark:text-green-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+              {approvedToExecute ? '✅ Approved to Execute' : 'Not approved'}
             </div>
-          )}
+            {approvedToExecute && (
+              <div className="text-xs text-green-600 dark:text-green-500 mt-1">
+                by @{approvedBy ?? '—'} • {formatAgo(approvedAt)}
+              </div>
+            )}
+            <div className="mt-3 flex gap-2">
+              {approvedToExecute ? (
+                <button
+                  onClick={() => setApproval(false)}
+                  disabled={approvalSaving}
+                  className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium rounded hover:bg-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50"
+                >
+                  {approvalSaving ? 'Saving...' : 'Unapprove'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setApproval(true)}
+                  disabled={approvalSaving}
+                  className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  {approvalSaving ? 'Saving...' : 'Approve'}
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Tags */}
           {task.tags && task.tags.length > 0 && (

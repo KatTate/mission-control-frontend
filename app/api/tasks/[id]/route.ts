@@ -46,7 +46,46 @@ export async function PATCH(
       updates.nextActionUpdatedBy = body.nextActionUpdatedBy ?? 'd4mon';
     }
 
+    // Approval audit trail
+    if (body.approvedToExecute !== undefined) {
+      const approved = Boolean(body.approvedToExecute);
+      updates.approvedToExecute = approved;
+
+      if (approved) {
+        updates.approvedBy = body.approvedBy ?? body.agentId ?? 'tate';
+        updates.approvedAt = admin.firestore.FieldValue.serverTimestamp();
+      } else {
+        updates.approvedBy = null;
+        updates.approvedAt = null;
+      }
+    }
+
     await taskRef.update(updates);
+
+    // Activity log (best-effort)
+    try {
+      const agentId = body.agentId ?? body.approvedBy ?? body.nextActionUpdatedBy ?? 'system';
+      const type = body.approvedToExecute === true
+        ? 'task_approved'
+        : body.approvedToExecute === false
+          ? 'task_unapproved'
+          : 'task_updated';
+
+      let message = `Updated task: ${taskDoc.data()?.title ?? taskId}`;
+      if (body.approvedToExecute === true) message = `Approved to execute: ${taskDoc.data()?.title ?? taskId}`;
+      if (body.approvedToExecute === false) message = `Unapproved: ${taskDoc.data()?.title ?? taskId}`;
+      if (body.nextAction !== undefined) message = `Next action updated: ${taskDoc.data()?.title ?? taskId}`;
+
+      await db.collection('activities').add({
+        agentId,
+        type,
+        message,
+        taskId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch {
+      // ignore activity write failures
+    }
 
     const updatedDoc = await taskRef.get();
     const updatedTask = {
